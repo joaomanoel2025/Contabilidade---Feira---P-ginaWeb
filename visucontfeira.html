@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Contabilidade - Feira</title>
+
+<style>
+body {
+  font-family: Arial;
+  background: #f4f6f9;
+  padding: 20px;
+  margin: 0;
+}
+
+.container {
+  max-width: 1100px;
+  margin: auto;
+}
+
+/* HEADER */
+.header-topo {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 15px;
+}
+
+.header-texto {
+  display: flex;
+  flex-direction: column;
+}
+
+.logo {
+  height: 60px;
+}
+
+/* FOOTER */
+.footer {
+  background: #000;
+  color: white;
+  margin-top: 40px;
+  padding: 20px;
+  border-radius: 10px;
+}
+
+.footer-content {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 15px;
+}
+
+.footer a {
+  color: #2c7be5;
+  text-decoration: underline;
+}
+
+.footer-logo {
+  height: 50px;
+}
+
+/* TEXTOS */
+h1 {
+  margin-bottom: 5px;
+}
+
+h2 {
+  font-size: 16px;
+  margin-bottom: 20px;
+}
+
+a {
+  color: #2c7be5;
+  text-decoration: none;
+}
+
+/* SEÇÕES */
+.section {
+  background: white;
+  padding: 15px;
+  border-radius: 10px;
+  margin-bottom: 20px;
+  box-shadow: 0 3px 10px rgba(0,0,0,0.05);
+  overflow-x: auto; /* 🔥 scroll horizontal no mobile */
+}
+
+/* TABELAS */
+table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 500px; /* 🔥 evita quebrar layout */
+}
+
+th, td {
+  padding: 8px;
+  text-align: center;
+  font-size: 14px;
+}
+
+th {
+  background: #2c7be5;
+  color: white;
+}
+
+td:first-child, th:first-child {
+  text-align: left;
+}
+
+tr:nth-child(even) {
+  background: #f2f2f2;
+}
+
+.linha-destaque {
+  background: #ffeeba !important;
+  font-weight: bold;
+}
+
+.update-flash {
+  animation: flash 0.5s;
+}
+
+@keyframes flash {
+  from { background: #d4edda; }
+  to { background: transparent; }
+}
+
+/* ================= MOBILE ================= */
+@media (max-width: 768px) {
+
+  body {
+    padding: 10px;
+  }
+
+  h1 {
+    font-size: 22px;
+  }
+
+  h2 {
+    font-size: 14px;
+  }
+
+  /* header vira coluna */
+  .header-topo {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .logo {
+    height: 50px;
+    align-self: center;
+  }
+
+  /* footer vira coluna */
+  .footer-content {
+    flex-direction: column;
+    text-align: center;
+  }
+
+  .footer-logo {
+    margin-top: 10px;
+  }
+
+  /* tabelas mais compactas */
+  th, td {
+    font-size: 13px;
+    padding: 6px;
+  }
+}
+
+</style>
+</head>
+
+<body>
+
+<div class="container">
+
+  <!-- HEADER -->
+  <div class="header-topo">
+    <div class="header-texto">
+      <h1>Contabilidade - Feira 📊</h1>
+      <h2><a href="#" target="_blank">Quer fazer alguma alteração? Clique aqui</a></h2>
+    </div>
+    <img src="minha_logo__1_-removebg-preview.png" class="logo">
+  </div>
+
+  <!-- TABELAS -->
+  <div class="section">
+    <h3>💰 Vendas</h3>
+    <table id="vendas"></table>
+  </div>
+
+  <div class="section">
+    <h3>📦 Estoque</h3>
+    <table id="estoque"></table>
+  </div>
+
+  <div class="section">
+    <h3>📈 Lucro</h3>
+    <table id="lucro"></table>
+  </div>
+
+  <!-- FOOTER -->
+  <div class="footer">
+    <div class="footer-content">
+      <div>
+        Fazer alguma alteração? 
+        <a href="https://tally.so/r/zxJpzM" target="_blank">Clique aqui</a>.
+      </div>
+      <img src="minha_logo__1_-removebg-preview.png" class="footer-logo">
+    </div>
+  </div>
+
+</div>
+
+<script>
+
+const INTERVALO = 4000;
+
+const URLS = {
+  vendas: "https://docs.google.com/spreadsheets/d/1_9Wpmg-IZ6QKf59P52du-1O6bNMg15ynpD3t-gnQVJY/gviz/tq?tqx=out:json&gid=1282047139&range=B2:D15",
+  estoque: "https://docs.google.com/spreadsheets/d/1_9Wpmg-IZ6QKf59P52du-1O6bNMg15ynpD3t-gnQVJY/gviz/tq?tqx=out:json&gid=1282047139&range=A17:E29",
+  lucro: "https://docs.google.com/spreadsheets/d/1_9Wpmg-IZ6QKf59P52du-1O6bNMg15ynpD3t-gnQVJY/gviz/tq?tqx=out:json&gid=1282047139&range=A32:B35"
+};
+
+const estado = { vendas:null, estoque:null, lucro:null };
+
+function formatarMoeda(valor){
+  if(valor===""||valor==null)return "";
+  let numero=Number(valor);
+  if(isNaN(numero))return valor;
+  return numero.toLocaleString("pt-BR",{style:"currency",currency:"BRL"});
+}
+
+async function fetchDados(url){
+  const res=await fetch(url);
+  const text=await res.text();
+  const json=JSON.parse(text.substring(47).slice(0,-2));
+  return json.table.rows.map(row=>row.c.map(cell=>cell?cell.v:""));
+}
+
+/* VENDAS */
+function renderTabelaVendas(id,dados){
+  const tabela=document.getElementById(id);
+  tabela.innerHTML="";
+
+  const headers=["Produto","Total vendido (R$)","Unidade (R$)"];
+
+  let tr=document.createElement("tr");
+  headers.forEach(h=>{
+    let th=document.createElement("th");
+    th.textContent=h;
+    tr.appendChild(th);
+  });
+  tabela.appendChild(tr);
+
+  dados.forEach((linha,i)=>{
+    let tr=document.createElement("tr");
+
+    linha.forEach((celula,idx)=>{
+      let td=document.createElement("td");
+      td.textContent=(idx===1||idx===2)?formatarMoeda(celula):celula;
+      tr.appendChild(td);
+    });
+
+    if(i===dados.length-1)tr.classList.add("linha-destaque");
+    tabela.appendChild(tr);
+  });
+}
+
+/* ESTOQUE */
+function renderTabelaEstoque(id,dados){
+  const tabela=document.getElementById(id);
+  tabela.innerHTML="";
+
+  const headers=["Produto","Quant. Inicial","Quant. doações","Quant. vendida","Quant. atual"];
+
+  let tr=document.createElement("tr");
+  headers.forEach(h=>{
+    let th=document.createElement("th");
+    th.textContent=h;
+    tr.appendChild(th);
+  });
+  tabela.appendChild(tr);
+
+  dados.forEach(linha=>{
+    let tr=document.createElement("tr");
+    linha.forEach(c=>{
+      let td=document.createElement("td");
+      td.textContent=c;
+      tr.appendChild(td);
+    });
+    tabela.appendChild(tr);
+  });
+}
+
+/* LUCRO */
+function renderTabelaLucro(id,dados){
+  const tabela=document.getElementById(id);
+  tabela.innerHTML="";
+
+  let tr=document.createElement("tr");
+  let th=document.createElement("th");
+  th.colSpan=2;
+  th.textContent="Balanço";
+  tr.appendChild(th);
+  tabela.appendChild(tr);
+
+  dados.forEach(linha=>{
+    let tr=document.createElement("tr");
+    let destaque=false;
+
+    linha.forEach((c,i)=>{
+      let td=document.createElement("td");
+      td.textContent=i===1?formatarMoeda(c):c;
+      if(typeof c==="string"&&c.toLowerCase().includes("balanço"))destaque=true;
+      tr.appendChild(td);
+    });
+
+    if(destaque)tr.classList.add("linha-destaque");
+    tabela.appendChild(tr);
+  });
+}
+
+async function atualizar(nome){
+  const dados=await fetchDados(URLS[nome]);
+  if(JSON.stringify(dados)!==JSON.stringify(estado[nome])){
+    if(nome==="vendas")renderTabelaVendas(nome,dados);
+    if(nome==="estoque")renderTabelaEstoque(nome,dados);
+    if(nome==="lucro")renderTabelaLucro(nome,dados);
+    estado[nome]=dados;
+  }
+}
+
+function loop(){
+  atualizar("vendas");
+  atualizar("estoque");
+  atualizar("lucro");
+}
+
+loop();
+setInterval(loop,INTERVALO);
+
+</script>
+
+</body>
+</html>
